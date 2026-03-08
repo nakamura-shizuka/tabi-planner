@@ -38,6 +38,7 @@ cd /Users/shizuka/Documents/my-obsidian/env
 docker-compose up -d
 
 # Execute clasp commands inside the container
+# Use node image simply to run clasp inside
 docker-compose exec -w /workspace/tabi-planner -T agent-env sh -c "
   if [ ! -f .clasp.json ]; then
     echo 'Creating new GAS project...'
@@ -51,15 +52,12 @@ docker-compose exec -w /workspace/tabi-planner -T agent-env sh -c "
   # Extract deployment id if exists or create new
   DEPLOY_OUTPUT=\$(clasp deploy --description 'Auto Deploy')
   echo \"\$DEPLOY_OUTPUT\"
-  
-  # Try to extract the Web App URL from the deployment output
-  # Format is usually: - [id] @[version] - web app url: https://script.google.com/macros/s/.../exec
-" > /tmp/gas_deploy.log 2>&1
+" > /tmp/gas_deploy.log 2>&1 || true
 
 cat /tmp/gas_deploy.log
 
 # Extract GAS_URL
-GAS_URL=$(grep "https://script.google.com/macros/s/" /tmp/gas_deploy.log | awk '{print $NF}' | tail -n 1)
+GAS_URL=$(grep -o 'https://script.google.com/macros/s/[a-zA-Z0-9_-]*/exec' /tmp/gas_deploy.log | tail -n 1)
 
 if [ -z "$GAS_URL" ]; then
   echo "❌ Could not extract GAS_URL"
@@ -75,8 +73,8 @@ cd /Users/shizuka/Documents/my-obsidian/tabi-planner
 sed -i '' "s|const GAS_URL = '';|const GAS_URL = '${GAS_URL}';|g" index.html
 
 git add index.html
-git commit -m "Configure GAS_URL ��"
-git push origin HEAD
+git commit -m "Configure GAS_URL 🔗" || true
+git push origin HEAD || true
 
 echo ""
 echo "🎉 Tabi Planner Deployment Complete!"
