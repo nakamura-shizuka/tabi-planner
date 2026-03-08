@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Tabi Planner 🗺</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fef6fb;
+            --surface: #fff;
+            --surface2: #fdf0f9;
+            --border: #f0d6ed;
+            --accent: #f472b6;
+            --accent2: #a78bfa;
+            --warn: #fb7185;
+            --text: #4a2040;
+            --text2: #9b6b8a;
+            --text3: #c4a0b8;
+            --radius: 20px;
+            --grad-main: linear-gradient(135deg, #f9a8d4, #c084fc);
+            --grad-btn: linear-gradient(135deg, #f472b6, #a78bfa);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -40%;
+            right: -20%;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(249, 168, 212, .2), transparent 70%);
+            pointer-events: none;
+            z-index: 0
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%;
+            left: -15%;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(196, 181, 253, .18), transparent 70%);
+            pointer-events: none;
+            z-index: 0
+        }
+
+        #app-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(254, 246, 251, .9);
+            backdrop-filter: blur(16px);
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px
+        }
+
+        #app-header h1 {
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: .5px;
+            background: var(--grad-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        #btn-back {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 22px;
+            cursor: pointer;
+            padding: 4px 8px
+        }
+
+        #btn-new {
+            background: var(--grad-btn);
+            border: none;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 8px 18px;
+            border-radius: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(244, 114, 182, .35);
+            transition: .2s
+        }
+
+        #btn-new:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(244, 114, 182, .5)
+        }
+
+        .screen {
+            display: none;
+            padding: 16px;
+            animation: fadeIn .25s ease;
+            position: relative;
+            z-index: 1
+        }
+
+        .screen.active {
+            display: block
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        #trips-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 14px
+        }
+
+        .trip-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            cursor: pointer;
+            transition: .25s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(200, 100, 180, .08)
+        }
+
+        .trip-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--grad-main)
+        }
+
+        .trip-card::after {
+            content: '✈️';
+            position: absolute;
+            right: 16px;
+            top: 14px;
+            font-size: 26px;
+            opacity: .13
+        }
+
+        .trip-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 32px rgba(200, 100, 180, .18)
+        }
+
+        .trip-card h3 {
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 6px;
+            color: var(--text)
+        }
+
+        .trip-card .trip-dates {
+            font-size: 13px;
+            color: var(--accent2);
+            margin-bottom: 8px;
+            font-weight: 600
+        }
+
+        .trip-card .trip-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .trip-card .trip-memo {
+            font-size: 12px;
+            color: var(--text3);
+            flex: 1
+        }
+
+        .trip-card .btn-delete-trip {
+            background: none;
+            border: none;
+            color: var(--text3);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            transition: .15s
+        }
+
+        .trip-card .btn-delete-trip:hover {
+            color: var(--warn);
+            transform: scale(1.2)
+        }
+
+        #date-tabs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 4px 0 14px;
+            scrollbar-width: none
+        }
+
+        #date-tabs::-webkit-scrollbar {
+            display: none
+        }
+
+        .date-tab {
+            flex-shrink: 0;
+            padding: 8px 18px;
+            border-radius: 24px;
+            border: 2px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: .2s
+        }
+
+        .date-tab.active {
+            background: var(--grad-btn);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 16px rgba(244, 114, 182, .35)
+        }
+
+        #timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0
+        }
+
+        .tl-item {
+            display: flex;
+            gap: 10px;
+            position: relative;
+            min-height: 80px
+        }
+
+        .tl-item:last-child .tl-dot-wrap::after {
+            display: none
+        }
+
+        .tl-dot-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 28px;
+            flex-shrink: 0;
+            padding-top: 6px
+        }
+
+        .tl-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 3px solid var(--bg);
+            flex-shrink: 0;
+            z-index: 1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .12)
+        }
+
+        .tl-dot-wrap::after {
+            content: '';
+            width: 2px;
+            flex: 1;
+            background: linear-gradient(to bottom, var(--border), transparent);
+            margin-top: 4px
+        }
+
+        .tl-time {
+            font-size: 11px;
+            color: var(--text3);
+            white-space: nowrap;
+            text-align: right;
+            width: 42px;
+            flex-shrink: 0;
+            padding-top: 4px;
+            font-weight: 600
+        }
+
+        .tl-card {
+            flex: 1;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: .2s;
+            border-left: 4px solid var(--border);
+            box-shadow: 0 2px 12px rgba(200, 100, 180, .07)
+        }
+
+        .tl-card:hover {
+            box-shadow: 0 6px 24px rgba(200, 100, 180, .18);
+            transform: translateY(-2px)
+        }
+
+        .tl-card .cat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin-bottom: 6px
+        }
+
+        .tl-card h4 {
+            font-size: 15px;
+            font-weight: 800;
+            margin-bottom: 4px;
+            color: var(--text)
+        }
+
+        .tl-card .tl-place {
+            font-size: 12px;
+            color: var(--text2);
+            display: flex;
+            align-items: center;
+            gap: 4px
+        }
+
+        .tl-card .tl-booking {
+            font-size: 11px;
+            margin-top: 4px;
+            font-weight: 600
+        }
+
+        .tl-card .tl-memo {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 4px;
+            background: var(--surface2);
+            border-radius: 8px;
+            padding: 4px 8px
+        }
+
+        .cat-移動,
+        .dot-移動 {
+            background: #eff6ff;
+            color: #3b82f6
+        }
+
+        .tl-card.cat-移動 {
+            border-left-color: #93c5fd
+        }
+
+        .tl-dot.dot-移動 {
+            background: #93c5fd
+        }
+
+        .cat-乗車体験,
+        .dot-乗車体験 {
+            background: #ecfdf5;
+            color: #10b981
+        }
+
+        .tl-card.cat-乗車体験 {
+            border-left-color: #6ee7b7
+        }
+
+        .tl-dot.dot-乗車体験 {
+            background: #6ee7b7
+        }
+
+        .cat-食事,
+        .dot-食事 {
+            background: #fff1f2;
+            color: #f43f5e
+        }
+
+        .tl-card.cat-食事 {
+            border-left-color: #fca5a1
+        }
+
+        .tl-dot.dot-食事 {
+            background: #fca5a1
+        }
+
+        .cat-観光,
+        .dot-観光 {
+            background: #f0fdf4;
+            color: #22c55e
+        }
+
+        .tl-card.cat-観光 {
+            border-left-color: #86efac
+        }
+
+        .tl-dot.dot-観光 {
+            background: #86efac
+        }
+
+        .cat-宿泊,
+        .dot-宿泊 {
+            background: #f5f3ff;
+            color: #8b5cf6
+        }
+
+        .tl-card.cat-宿泊 {
+            border-left-color: #c4b5fd
+        }
+
+        .tl-dot.dot-宿泊 {
+            background: #c4b5fd
+        }
+
+        .cat-アクティビティ,
+        .dot-アクティビティ {
+            background: #fdf2f8;
+            color: #ec4899
+        }
+
+        .tl-card.cat-アクティビティ {
+            border-left-color: #f9a8d4
+        }
+
+        .tl-dot.dot-アクティビティ {
+            background: #f9a8d4
+        }
+
+        .cat-買い物,
+        .dot-買い物 {
+            background: #fefce8;
+            color: #ca8a04
+        }
+
+        .tl-card.cat-買い物 {
+            border-left-color: #fde68a
+        }
+
+        .tl-dot.dot-買い物 {
+            background: #fde68a
+        }
+
+        .cat-自由時間,
+        .dot-自由時間 {
+            background: #f9fafb;
+            color: #6b7280
+        }
+
+        .tl-card.cat-自由時間 {
+            border-left-color: #d1d5db
+        }
+
+        .tl-dot.dot-自由時間 {
+            background: #d1d5db
+        }
+
+        .transport-section {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .transport-card {
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .transport-card.main-train {
+            border-left: 4px solid var(--accent);
+            background: #fff0f9
+        }
+
+        .transport-card.alt-train {
+            border-left: 4px solid var(--text3);
+            opacity: .82
+        }
+
+        .trn-route {
+            font-size: 13px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text)
+        }
+
+        .trn-route .arrow {
+            color: var(--accent);
+            font-size: 13px
+        }
+
+        .trn-times {
+            font-size: 12px;
+            color: var(--text2);
+            font-weight: 600
+        }
+
+        .trn-detail {
+            font-size: 11px;
+            color: var(--text3)
+        }
+
+        .trn-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap
+        }
+
+        .trn-tag {
+            font-size: 10px;
+            background: var(--border);
+            border-radius: 10px;
+            padding: 3px 10px;
+            color: var(--text2);
+            font-weight: 700
+        }
+
+        .trn-tag.priority-メイン {
+            background: #fdf2f8;
+            color: var(--accent);
+            border: 1px solid #f9a8d4
+        }
+
+        .trn-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px
+        }
+
+        .btn-map {
+            flex: 1;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            border: none;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            box-shadow: 0 3px 12px rgba(59, 130, 246, .3)
+        }
+
+        .btn-edit-trn,
+        .btn-del-trn {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            color: var(--text2);
+            font-size: 11px;
+            padding: 7px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700
+        }
+
+        .btn-del-trn:hover {
+            background: #fff1f2;
+            color: var(--warn);
+            border-color: #fca5a1
+        }
+
+        .maps-embed {
+            width: 100%;
+            height: 200px;
+            border: none;
+            border-radius: 12px;
+            margin-top: 8px
+        }
+
+        #fab {
+            position: fixed;
+            bottom: 24px;
+            right: 20px;
+            z-index: 200;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            border: none;
+            background: var(--grad-btn);
+            color: #fff;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 8px 28px rgba(244, 114, 182, .5);
+            transition: .2s;
+            display: none;
+            align-items: center;
+            justify-content: center
+        }
+
+        #fab.show {
+            display: flex
+        }
+
+        #fab:hover {
+            transform: scale(1.1) rotate(8deg)
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: rgba(74, 32, 64, .35);
+            backdrop-filter: blur(6px);
+            align-items: flex-end;
+            justify-content: center
+        }
+
+        .modal-overlay.open {
+            display: flex
+        }
+
+        .modal-box {
+            background: var(--bg);
+            border-radius: 28px 28px 0 0;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px 20px 44px;
+            animation: slideUp .3s ease;
+            border-top: 3px solid var(--border)
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(60px);
+                opacity: 0
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1
+            }
+        }
+
+        .modal-handle {
+            width: 40px;
+            height: 5px;
+            background: var(--border);
+            border-radius: 3px;
+            margin: 0 auto 20px
+        }
+
+        .modal-box h2 {
+            font-size: 18px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            color: var(--text)
+        }
+
+        .form-group {
+            margin-bottom: 16px
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text2);
+            margin-bottom: 6px;
+            font-weight: 700;
+            letter-spacing: .3px
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 14px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            outline: none;
+            transition: .2s
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(244, 114, 182, .12)
+        }
+
+        .form-group textarea {
+            min-height: 70px;
+            resize: vertical
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px
+        }
+
+        .cat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px
+        }
+
+        .cat-btn {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: .2s;
+            font-size: 11px;
+            font-weight: 700
+        }
+
+        .cat-btn:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px)
+        }
+
+        .cat-btn.selected {
+            border-color: var(--accent);
+            background: #fdf2f8;
+            color: var(--accent)
+        }
+
+        .cat-btn .cat-icon {
+            font-size: 22px;
+            display: block;
+            margin-bottom: 4px
+        }
+
+        .booking-opts {
+            display: flex;
+            gap: 8px
+        }
+
+        .booking-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            font-size: 13px;
+            cursor: pointer;
+            text-align: center;
+            transition: .2s;
+            font-weight: 700
+        }
+
+        .booking-btn.selected {
+            border-color: #6ee7b7;
+            background: #ecfdf5;
+            color: #10b981
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 22px
+        }
+
+        .btn-cancel {
+            flex: 1;
+            padding: 13px;
+            border-radius: 14px;
+            border: 2px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 700
+        }
+
+        .btn-save {
+            flex: 2;
+            padding: 13px;
+            border-radius: 14px;
+            border: none;
+            background: var(--grad-btn);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(244, 114, 182, .4)
+        }
+
+        .btn-save:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(244, 114, 182, .5)
+        }
+
+        .priority-opts {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap
+        }
+
+        .priority-btn {
+            flex: 1;
+            padding: 9px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            background: var(--surface);
+            color: var(--text2);
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: .2s;
+            font-weight: 700;
+            min-width: 80px
+        }
+
+        .priority-btn.selected {
+            border-color: var(--accent);
+            background: #fdf2f8;
+            color: var(--accent)
+        }
+
+        .section-divider {
+            height: 2px;
+            background: var(--border);
+            margin: 20px 0;
+            border-radius: 2px
+        }
+
+        .btn-add-transport {
+            width: 100%;
+            padding: 12px;
+            border-radius: 14px;
+            border: 2px dashed var(--border);
+            background: none;
+            color: var(--text2);
+            font-size: 13px;
+            cursor: pointer;
+            transition: .2s;
+            font-weight: 700
+        }
+
+        .btn-add-transport:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: #fdf2f8
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text3)
+        }
+
+        .empty-state .empty-icon {
+            font-size: 60px;
+            margin-bottom: 12px;
+            display: block;
+            animation: bounce 2.2s infinite
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0)
+            }
+
+            50% {
+                transform: translateY(-8px)
+            }
+        }
+
+        .empty-state p {
+            font-size: 15px;
+            font-weight: 600
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 10px 22px;
+            font-size: 13px;
+            z-index: 500;
+            transition: .3s;
+            opacity: 0;
+            pointer-events: none;
+            font-weight: 700;
+            color: var(--text);
+            box-shadow: 0 4px 20px rgba(200, 100, 180, .15)
+        }
+
+        .toast.show {
+            opacity: 1
+        }
+
+        .detail-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap
+        }
+
+        .btn-edit-sched,
+        .btn-del-sched {
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            cursor: pointer;
+            font-weight: 700;
+            transition: .15s
+        }
+
+        .btn-edit-sched {
+            background: var(--surface);
+            color: var(--text2)
+        }
+
+        .btn-edit-sched:hover {
+            border-color: var(--accent2);
+            color: var(--accent2)
+        }
+
+        .btn-del-sched {
+            background: #fff1f2;
+            color: var(--warn);
+            border-color: #fca5a1
+        }
+    </style>
+
+</head>
+<body>
+
+    <!-- ヘッダー -->
+    <header id="app-header">
+        <button id="btn-back">←</button>
+        <h1>🗺 Tabi Planner</h1>
+        <button id="btn-new">＋ 新規</button>
+    </header>
+
+    <!-- 旅行一覧 -->
+    <div id="screen-list" class="screen active">
+        <div id="trips-grid">
+            <div class="empty-state">
+                <div class="empty-icon">✈️</div>
+                <p>旅行を追加しましょう</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 旅程タイムライン -->
+    <div id="screen-detail" class="screen">
+        <div id="date-tabs"></div>
+        <div id="timeline"></div>
+    </div>
+
+    <!-- FAB -->
+    <button id="fab" class="show">＋</button>
+
+    <!-- 旅行作成モーダル -->
+    <div id="modal-trip" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-handle"></div>
+            <h2 id="modal-trip-title">✈️ 旅行を追加</h2>
+            <input type="hidden" id="trip-id-input">
+            <div class="form-group"><label>旅行名 *</label><input type="text" id="trip-name" placeholder="例: 春の京都旅行"></div>
+            <div class="form-row">
+                <div class="form-group"><label>開始日</label><input type="date" id="trip-start"></div>
+                <div class="form-group"><label>終了日</label><input type="date" id="trip-end"></div>
+            </div>
+            <div class="form-group"><label>メモ</label><textarea id="trip-memo" placeholder="例: 家族旅行・3泊4日"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal('modal-trip')">キャンセル</button>
+                <button class="btn-save" onclick="saveTrip()">保存する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- スケジュール追加モーダル -->
+    <div id="modal-sched" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-handle"></div>
+            <h2 id="modal-sched-title">📅 予定を追加</h2>
+            <input type="hidden" id="sched-id-input">
+            <div class="form-group"><label>カテゴリ</label>
+                <div class="cat-grid" id="cat-grid"></div>
+            </div>
+            <div class="form-group"><label>タイトル *</label><input type="text" id="sched-title"
+                    placeholder="例: ランチ：嵐山の湯豆腐屋"></div>
+            <div class="form-row">
+                <div class="form-group"><label>日付</label><input type="date" id="sched-date"></div>
+                <div class="form-group"><label>並び順</label><input type="number" id="sched-order" value="0" min="0"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>開始時刻</label><input type="time" id="sched-start"></div>
+                <div class="form-group"><label>終了時刻</label><input type="time" id="sched-end"></div>
+            </div>
+            <div class="form-group"><label>場所</label><input type="text" id="sched-place" placeholder="例: 京都府右京区嵯峨">
+            </div>
+            <div class="form-group"><label>予約状況</label>
+                <div class="booking-opts">
+                    <button class="booking-btn selected" data-val="✅ 予約済" onclick="selectBooking(this)">✅ 予約済</button>
+                    <button class="booking-btn" data-val="⬜ 未予約" onclick="selectBooking(this)">⬜ 未予約</button>
+                    <button class="booking-btn" data-val="🔲 不要" onclick="selectBooking(this)">🔲 不要</button>
+                </div>
+            </div>
+            <div class="form-group"><label>メモ・予約番号</label><textarea id="sched-memo"
+                    placeholder="例: 予約番号: A12345"></textarea></div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal('modal-sched')">キャンセル</button>
+                <button class="btn-save" onclick="saveSched()">保存する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 交通手段モーダル -->
+    <div id="modal-trn" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-handle"></div>
+            <h2 id="modal-trn-title">🚄 交通手段を追加</h2>
+            <input type="hidden" id="trn-id-input">
+            <input type="hidden" id="trn-sched-id-input">
+            <div class="form-group"><label>優先度</label>
+                <div class="priority-opts">
+                    <button class="priority-btn selected" data-val="メイン" onclick="selectPriority(this)">⭐ メイン</button>
+                    <button class="priority-btn" data-val="代替1" onclick="selectPriority(this)">🔄 代替1（1本前後）</button>
+                    <button class="priority-btn" data-val="代替2" onclick="selectPriority(this)">🔄 代替2</button>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>出発地</label><input type="text" id="trn-origin" placeholder="東京駅"></div>
+                <div class="form-group"><label>到着地</label><input type="text" id="trn-dest" placeholder="京都駅"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>出発時刻</label><input type="time" id="trn-dep"></div>
+                <div class="form-group"><label>到着時刻</label><input type="time" id="trn-arr"></div>
+            </div>
+            <div class="form-group"><label>路線名・列車名</label><input type="text" id="trn-line"
+                    placeholder="例: 東海道新幹線 のぞみ27号"></div>
+            <div class="form-row">
+                <div class="form-group"><label>座席情報</label><input type="text" id="trn-seat" placeholder="例: 7号車 12A">
+                </div>
+                <div class="form-group"><label>料金</label><input type="text" id="trn-fare" placeholder="例: ¥13,320">
+                </div>
+            </div>
+            <div class="form-group"><label>メモ</label><textarea id="trn-memo" placeholder="例: E席は富士山側"></textarea></div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal('modal-trn')">キャンセル</button>
+                <button class="btn-save" onclick="saveTrn()">保存する</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // ============================================================
+        // 設定
+        // ============================================================
+        const GAS_URL = ''; // デプロイ後にURLを設定
+        const DEMO_MODE = !GAS_URL;
+
+        const CATEGORIES = [
+            { name: '移動', icon: '🚄' }, { name: '乗車体験', icon: '🚃' },
+            { name: '食事', icon: '🍽' }, { name: '観光', icon: '🏛' },
+            { name: '宿泊', icon: '🏨' }, { name: 'アクティビティ', icon: '🎯' },
+            { name: '買い物', icon: '🛍' }, { name: '自由時間', icon: '☕' },
+        ];
+
+        // ============================================================
+        // 状態管理
+        // ============================================================
+        let state = {
+            trips: [], currentTripId: null,
+            schedules: [], transports: [],
+            byDate: {}, currentDate: null,
+            selectedCat: '食事', selectedBooking: '✅ 予約済', selectedPriority: 'メイン',
+        };
+
+        // ============================================================
+        // デモデータ
+        // ============================================================
+        const DEMO_TRIPS = [
+            { tripId: 'demo1', 旅行名: '🌸 春の京都旅行', 開始日: '2026/04/10', 終了日: '2026/04/12', メモ: '家族旅行・2泊3日', 作成日: '2026/03/08' },
+            { tripId: 'demo2', 旅行名: '🏔 夏の北海道', 開始日: '2026/07/20', 終了日: '2026/07/23', メモ: '避暑地の旅', 作成日: '2026/03/08' },
+        ];
+        const DEMO_SCHEDULES = [
+            { scheduleId: 's1', tripId: 'demo1', 日付: '2026/04/10', 開始時刻: '08:30', 終了時刻: '10:45', カテゴリ: '移動', タイトル: '東京→京都 のぞみ27号', 場所: '東京駅→京都駅', 予約ステータス: '✅ 予約済', メモ: '7号車 E席（富士山側）', 並び順: 1, transportId: 't1' },
+            { scheduleId: 's2', tripId: 'demo1', 日付: '2026/04/10', 開始時刻: '12:00', 終了時刻: '13:30', カテゴリ: '食事', タイトル: 'ランチ：嵐山 湯豆腐屋', 場所: '京都府右京区嵯峨', 予約ステータス: '✅ 予約済', メモ: '予約番号: A12345', 並び順: 2, transportId: '' },
+            { scheduleId: 's3', tripId: 'demo1', 日付: '2026/04/10', 開始時刻: '14:00', 終了時刻: '14:30', カテゴリ: '乗車体験', タイトル: '嵯峨野トロッコ列車', 場所: 'トロッコ嵯峨→トロッコ亀岡', 予約ステータス: '✅ 予約済', メモ: '乗ること自体が目的！景色最高', 並び順: 3, transportId: 't2' },
+            { scheduleId: 's4', tripId: 'demo1', 日付: '2026/04/10', 開始時刻: '18:30', 終了時刻: '20:30', カテゴリ: '食事', タイトル: 'ディナー：祇園の割烹', 場所: '京都市東山区祇園町', 予約ステータス: '✅ 予約済', メモ: '', 並び順: 4, transportId: '' },
+            { scheduleId: 's5', tripId: 'demo1', 日付: '2026/04/11', 開始時刻: '09:00', 終了時刻: '11:00', カテゴリ: '観光', タイトル: '金閣寺', 場所: '京都府京都市北区鹿苑寺', 予約ステータス: '🔲 不要', メモ: '', 並び順: 1, transportId: '' },
+            { scheduleId: 's6', tripId: 'demo1', 日付: '2026/04/12', 開始時刻: '16:00', 終了時刻: '18:15', カテゴリ: '移動', タイトル: '京都→東京 のぞみ60号', 場所: '京都駅→東京駅', 予約ステータス: '✅ 予約済', メモ: '', 並び順: 1, transportId: 't3' },
+        ];
+        const DEMO_TRANSPORTS = [
+            { transportId: 't1', scheduleId: 's1', tripId: 'demo1', 出発地: '東京駅', 到着地: '京都駅', 出発時刻: '08:30', 到着時刻: '10:45', 路線名: '東海道新幹線 のぞみ27号', 座席情報: '7号車 12E', 料金: '¥13,320', 優先度: 'メイン', GoogleMapsURL: 'https://www.google.com/maps/dir/?api=1&origin=%E6%9D%B1%E4%BA%AC%E9%A7%85&destination=%E4%BA%AC%E9%83%BD%E9%A7%85&travelmode=transit', メモ: 'E席は富士山側' },
+            { transportId: 't1a', scheduleId: 's1', tripId: 'demo1', 出発地: '東京駅', 到着地: '京都駅', 出発時刻: '07:56', 到着時刻: '10:14', 路線名: '東海道新幹線 のぞみ5号', 座席情報: '', 料金: '¥13,320', 優先度: '代替1', GoogleMapsURL: '', メモ: '1本前の便' },
+            { transportId: 't1b', scheduleId: 's1', tripId: 'demo1', 出発地: '東京駅', 到着地: '京都駅', 出発時刻: '09:03', 到着時刻: '11:22', 路線名: '東海道新幹線 のぞみ41号', 座席情報: '', 料金: '¥13,320', 優先度: '代替2', GoogleMapsURL: '', メモ: '1本後の便' },
+            { transportId: 't2', scheduleId: 's3', tripId: 'demo1', 出発地: 'トロッコ嵯峨', 到着地: 'トロッコ亀岡', 出発時刻: '14:02', 到着時刻: '14:25', 路線名: '嵯峨野観光鉄道', 座席情報: '4号車', 料金: '¥880', 優先度: 'メイン', GoogleMapsURL: 'https://www.google.com/maps/dir/?api=1&origin=%E3%83%88%E3%83%AD%E3%83%83%E3%82%B3%E5%B5%AF%E5%B3%A8&destination=%E3%83%88%E3%83%AD%E3%83%83%E3%82%B3%E4%BA%80%E5%B2%A1&travelmode=transit', メモ: '予約必須！窓側狙い' },
+            { transportId: 't3', scheduleId: 's6', tripId: 'demo1', 出発地: '京都駅', 到着地: '東京駅', 出発時刻: '16:00', 到着時刻: '18:15', 路線名: '東海道新幹線 のぞみ60号', 座席情報: '3号車 5A', 料金: '¥13,320', 優先度: 'メイン', GoogleMapsURL: 'https://www.google.com/maps/dir/?api=1&origin=%E4%BA%AC%E9%83%BD%E9%A7%85&destination=%E6%9D%B1%E4%BA%AC%E9%A7%85&travelmode=transit', メモ: '' },
+        ];
+
+        // ============================================================
+        // API呼び出し
+        // ============================================================
+        async function apiCall(action, params = {}) {
+            if (DEMO_MODE) return demoApi(action, params);
+            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, ...params }) });
+            return await res.json();
+        }
+
+        function demoApi(action, params) {
+            if (action === 'getTrips') return { success: true, data: [...DEMO_TRIPS] };
+            if (action === 'getTripDetail') {
+                const scheds = DEMO_SCHEDULES.filter(s => s.tripId === params.tripId);
+                const trns = DEMO_TRANSPORTS.filter(t => t.tripId === params.tripId);
+                const byDate = {};
+                scheds.forEach(s => { if (!byDate[s.日付]) byDate[s.日付] = []; byDate[s.日付].push({ ...s, transports: trns.filter(t => t.scheduleId === s.scheduleId) }); });
+                return { success: true, data: { schedules: scheds, byDate, transports: trns } };
+            }
+            if (action === 'saveTrip') {
+                const d = params.data;
+                if (!d.tripId) { d.tripId = 'trip_' + Date.now(); DEMO_TRIPS.unshift(d); }
+                else { const i = DEMO_TRIPS.findIndex(t => t.tripId === d.tripId); if (i >= 0) DEMO_TRIPS[i] = { ...DEMO_TRIPS[i], ...d }; }
+                return { success: true, tripId: d.tripId };
+            }
+            if (action === 'saveSchedule') {
+                const d = params.data;
+                if (!d.scheduleId) { d.scheduleId = 'sch_' + Date.now(); DEMO_SCHEDULES.push(d); }
+                else { const i = DEMO_SCHEDULES.findIndex(s => s.scheduleId === d.scheduleId); if (i >= 0) DEMO_SCHEDULES[i] = { ...DEMO_SCHEDULES[i], ...d }; }
+                return { success: true, scheduleId: d.scheduleId };
+            }
+            if (action === 'saveTransport') {
+                const d = params.data;
+                if (!d.transportId) { d.transportId = 'trn_' + Date.now(); DEMO_TRANSPORTS.push(d); }
+                else { const i = DEMO_TRANSPORTS.findIndex(t => t.transportId === d.transportId); if (i >= 0) DEMO_TRANSPORTS[i] = { ...DEMO_TRANSPORTS[i], ...d }; }
+                return { success: true, transportId: d.transportId };
+            }
+            if (action === 'deleteTrip') {
+                const i = DEMO_TRIPS.findIndex(t => t.tripId === params.tripId); if (i >= 0) DEMO_TRIPS.splice(i, 1);
+                return { success: true };
+            }
+            if (action === 'deleteSchedule') {
+                const i = DEMO_SCHEDULES.findIndex(s => s.scheduleId === params.scheduleId); if (i >= 0) DEMO_SCHEDULES.splice(i, 1);
+                return { success: true };
+            }
+            if (action === 'deleteTransport') {
+                const i = DEMO_TRANSPORTS.findIndex(t => t.transportId === params.transportId); if (i >= 0) DEMO_TRANSPORTS.splice(i, 1);
+                return { success: true };
+            }
+            return { success: false, error: 'Unknown action' };
+        }
+
+        // ============================================================
+        // 画面管理
+        // ============================================================
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + id).classList.add('active');
+            if (id === 'list') {
+                document.getElementById('btn-back').style.display = 'none';
+                document.getElementById('btn-new').textContent = '＋ 新規';
+                document.getElementById('btn-new').onclick = () => openTripModal();
+                document.getElementById('fab').classList.remove('show');
+            } else {
+                document.getElementById('btn-back').style.display = 'block';
+                document.getElementById('btn-new').style.display = 'none';
+                document.getElementById('fab').classList.add('show');
+            }
+        }
+
+        // ============================================================
+        // 旅行一覧
+        // ============================================================
+        async function loadTrips() {
+            const res = await apiCall('getTrips');
+            if (!res.success) return showToast('読み込みエラー');
+            state.trips = res.data;
+            renderTripList();
+        }
+
+        function renderTripList() {
+            const el = document.getElementById('trips-grid');
+            if (!state.trips.length) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-icon">✈️</div><p>旅行を追加しましょう<br><small style="color:var(--text3)">右上の「＋ 新規」から追加できます</small></p></div>';
+                return;
+            }
+            el.innerHTML = state.trips.map(t => `
+    <div class="trip-card" onclick="openTrip('${t.tripId}')">
+      <h3>${t.旅行名 || '名称未設定'}</h3>
+      <div class="trip-dates">📅 ${t.開始日 || '---'} 〜 ${t.終了日 || '---'}</div>
+      <div class="trip-meta">
+        <span class="trip-memo">${t.メモ || ''}</span>
+        <button class="btn-delete-trip" onclick="event.stopPropagation();deleteTrip('${t.tripId}')">🗑</button>
+        <button class="btn-delete-trip" onclick="event.stopPropagation();editTrip('${t.tripId}')" style="font-size:14px">✏️</button>
+      </div>
+    </div>`).join('');
+        }
+
+        async function openTrip(tripId) {
+            state.currentTripId = tripId;
+            const res = await apiCall('getTripDetail', { tripId });
+            if (!res.success) return showToast('読み込みエラー');
+            state.byDate = res.data.byDate;
+            state.schedules = res.data.schedules;
+            state.transports = res.data.transports;
+            const trip = state.trips.find(t => t.tripId === tripId);
+            document.getElementById('app-header').querySelector('h1').textContent = trip ? trip.旅行名 : '旅程';
+            renderDateTabs();
+            showScreen('detail');
+        }
+
+        // ============================================================
+        // 日付タブ + タイムライン
+        // ============================================================
+        function renderDateTabs() {
+            const dates = Object.keys(state.byDate).sort();
+            if (!dates.length) {
+                document.getElementById('date-tabs').innerHTML = '';
+                document.getElementById('timeline').innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>予定を追加しましょう<br><small style="color:var(--text3)">右下の「＋」から追加できます</small></p></div>';
+                return;
+            }
+            state.currentDate = state.currentDate && dates.includes(state.currentDate) ? state.currentDate : dates[0];
+            document.getElementById('date-tabs').innerHTML = dates.map(d => `
+    <button class="date-tab${d === state.currentDate ? ' active' : ''}" onclick="selectDate('${d}')">${formatDateTab(d)}</button>`).join('');
+            renderTimeline();
+        }
+
+        function formatDateTab(d) {
+            try { const dt = new Date(d.replace(/\//g, '-')); const days = ['日', '月', '火', '水', '木', '金', '土']; return `${dt.getMonth() + 1}/${dt.getDate()}(${days[dt.getDay()]})`; } catch { return d; }
+        }
+
+        function selectDate(d) {
+            state.currentDate = d;
+            document.querySelectorAll('.date-tab').forEach(b => b.classList.toggle('active', b.textContent === formatDateTab(d)));
+            renderTimeline();
+        }
+
+        function renderTimeline() {
+            const items = (state.byDate[state.currentDate] || []).slice().sort((a, b) => {
+                if (a.開始時刻 && b.開始時刻) return a.開始時刻.localeCompare(b.開始時刻);
+                return (a.並び順 || 0) - (b.並び順 || 0);
+            });
+            if (!items.length) {
+                document.getElementById('timeline').innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>この日の予定はまだありません</p></div>';
+                return;
+            }
+            document.getElementById('timeline').innerHTML = items.map(item => {
+                const trns = (item.transports || []).slice().sort((a, b) => {
+                    const order = { メイン: 0, 代替1: 1, 代替2: 2 }; return (order[a.優先度] || -1) - (order[b.優先度] || -1);
+                });
+                const trnHtml = trns.length ? `<div class="transport-section">${trns.map(t => renderTransportCard(t)).join('')}</div>` : '';
+                return `
+    <div class="tl-item">
+      <div class="tl-time">${item.開始時刻 || ''}<br><small style="color:var(--text3)">${item.終了時刻 || ''}</small></div>
+      <div class="tl-dot-wrap"><div class="tl-dot dot-${item.カテゴリ || '自由時間'}"></div></div>
+      <div class="tl-card cat-${item.カテゴリ || '自由時間'}">
+        <span class="cat-badge cat-${item.カテゴリ || '自由時間'}">${catIcon(item.カテゴリ)} ${item.カテゴリ || ''}</span>
+        <h4>${item.タイトル || '（タイトル未設定）'}</h4>
+        ${item.場所 ? `<div class="tl-place">📍 ${item.場所}</div>` : ''}
+        ${item.予約ステータス ? `<div class="tl-booking">${item.予約ステータス}</div>` : ''}
+        ${item.メモ ? `<div class="tl-memo">💬 ${item.メモ}</div>` : ''}
+        ${trnHtml}
+        <div class="detail-actions">
+          <button class="btn-edit-sched" onclick="editSched('${item.scheduleId}')">✏️ 編集</button>
+          <button class="btn-del-sched" onclick="deleteSched('${item.scheduleId}')">🗑 削除</button>
+          <button class="btn-edit-sched" onclick="openTrnModal('${item.scheduleId}')">🚄 交通手段を追加</button>
+        </div>
+      </div>
+    </div>`;
+            }).join('');
+        }
+
+        function renderTransportCard(t) {
+            const isMain = t.優先度 === 'メイン';
+            const mapsEmbed = (isMain && t.GoogleMapsURL) ? buildEmbedUrl(t.出発地, t.到着地) : '';
+            return `
+  <div class="transport-card ${isMain ? 'main-train' : 'alt-train'}">
+    <div class="trn-route">
+      <span>${t.出発地 || '?'}</span><span class="arrow">→</span><span>${t.到着地 || '?'}</span>
+    </div>
+    <div class="trn-times">🕐 ${t.出発時刻 || '--:--'} → ${t.到着時刻 || '--:--'}</div>
+    ${t.路線名 ? `<div class="trn-detail">🚆 ${t.路線名}</div>` : ''}
+    <div class="trn-tags">
+      <span class="trn-tag priority-${t.優先度}">${t.優先度 === 'メイン' ? '⭐ メイン' : t.優先度 === '代替1' ? '🔄 代替1' : '🔄 代替2'}</span>
+      ${t.座席情報 ? `<span class="trn-tag">💺 ${t.座席情報}</span>` : ''}
+      ${t.料金 ? `<span class="trn-tag">💴 ${t.料金}</span>` : ''}
+    </div>
+    ${t.メモ ? `<div class="trn-detail" style="color:var(--text3)">💬 ${t.メモ}</div>` : ''}
+    <div class="trn-actions">
+      ${t.GoogleMapsURL ? `<button class="btn-map" onclick="openMaps('${t.GoogleMapsURL}')">🗺 Googleマップで確認</button>` : ''}
+      <button class="btn-edit-trn" onclick="editTrn('${t.transportId}','${t.scheduleId}')">✏️</button>
+      <button class="btn-del-trn" onclick="deleteTrn('${t.transportId}')">🗑</button>
+    </div>
+    ${mapsEmbed ? `<iframe class="maps-embed" src="${mapsEmbed}" loading="lazy" allowfullscreen></iframe>` : ''}
+  </div>`;
+        }
+
+        function buildEmbedUrl(origin, dest) {
+            return `https://www.google.com/maps/embed/v1/directions?key=YOUR_API_KEY&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&mode=transit&language=ja`;
+        }
+
+        function openMaps(url) { window.open(url, '_blank'); }
+        function catIcon(cat) { return (CATEGORIES.find(c => c.name === cat) || { icon: '📌' }).icon; }
+
+        // ============================================================
+        // モーダル操作
+        // ============================================================
+        function openModal(id) { document.getElementById(id).classList.add('open'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        // 旅行モーダル
+        function openTripModal(trip = null) {
+            document.getElementById('trip-id-input').value = trip ? trip.tripId : '';
+            document.getElementById('modal-trip-title').textContent = trip ? '✏️ 旅行を編集' : '✈️ 旅行を追加';
+            document.getElementById('trip-name').value = trip ? trip.旅行名 : '';
+            document.getElementById('trip-start').value = trip ? (trip.開始日 || '').replace(/\//g, '-') : '';
+            document.getElementById('trip-end').value = trip ? (trip.終了日 || '').replace(/\//g, '-') : '';
+            document.getElementById('trip-memo').value = trip ? trip.メモ : '';
+            openModal('modal-trip');
+        }
+
+        function editTrip(tripId) {
+            const trip = state.trips.find(t => t.tripId === tripId);
+            if (trip) openTripModal(trip);
+        }
+
+        async function saveTrip() {
+            const name = document.getElementById('trip-name').value.trim();
+            if (!name) return showToast('旅行名を入力してください');
+            const data = {
+                tripId: document.getElementById('trip-id-input').value,
+                旅行名: name,
+                開始日: document.getElementById('trip-start').value.replace(/-/g, '/'),
+                終了日: document.getElementById('trip-end').value.replace(/-/g, '/'),
+                メモ: document.getElementById('trip-memo').value,
+            };
+            const res = await apiCall('saveTrip', { data });
+            if (!res.success) return showToast('保存エラー: ' + res.error);
+            closeModal('modal-trip');
+            showToast('保存しました ✅');
+            await loadTrips();
+        }
+
+        async function deleteTrip(tripId) {
+            if (!confirm('この旅行を削除しますか？関連する予定も全て削除されます。')) return;
+            await apiCall('deleteTrip', { tripId });
+            showToast('削除しました');
+            await loadTrips();
+        }
+
+        // スケジュールモーダル
+        function initCatGrid() {
+            document.getElementById('cat-grid').innerHTML = CATEGORIES.map(c => `
+    <div class="cat-btn${c.name === state.selectedCat ? ' selected' : ''}" onclick="selectCat(this,'${c.name}')">
+      <span class="cat-icon">${c.icon}</span>${c.name}
+    </div>`).join('');
+        }
+
+        function selectCat(el, name) {
+            state.selectedCat = name;
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function selectBooking(el) {
+            state.selectedBooking = el.dataset.val;
+            document.querySelectorAll('.booking-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function selectPriority(el) {
+            state.selectedPriority = el.dataset.val;
+            document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function openSchedModal(sched = null) {
+            document.getElementById('sched-id-input').value = sched ? sched.scheduleId : '';
+            document.getElementById('modal-sched-title').textContent = sched ? '✏️ 予定を編集' : '📅 予定を追加';
+            document.getElementById('sched-title').value = sched ? sched.タイトル : '';
+            document.getElementById('sched-date').value = sched ? (sched.日付 || '').replace(/\//g, '-') : state.currentDate ? (state.currentDate.replace(/\//g, '-')) : '';
+            document.getElementById('sched-start').value = sched ? sched.開始時刻 : '';
+            document.getElementById('sched-end').value = sched ? sched.終了時刻 : '';
+            document.getElementById('sched-place').value = sched ? sched.場所 : '';
+            document.getElementById('sched-memo').value = sched ? sched.メモ : '';
+            document.getElementById('sched-order').value = sched ? sched.並び順 : '0';
+            state.selectedCat = sched ? sched.カテゴリ : '食事';
+            state.selectedBooking = sched ? sched.予約ステータス : '✅ 予約済';
+            initCatGrid();
+            document.querySelectorAll('.booking-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === state.selectedBooking));
+            openModal('modal-sched');
+        }
+
+        function editSched(scheduleId) {
+            const s = state.schedules.find(s => s.scheduleId === scheduleId);
+            if (s) openSchedModal(s);
+        }
+
+        async function saveSched() {
+            const title = document.getElementById('sched-title').value.trim();
+            if (!title) return showToast('タイトルを入力してください');
+            const data = {
+                scheduleId: document.getElementById('sched-id-input').value,
+                tripId: state.currentTripId,
+                日付: document.getElementById('sched-date').value.replace(/-/g, '/'),
+                開始時刻: document.getElementById('sched-start').value,
+                終了時刻: document.getElementById('sched-end').value,
+                カテゴリ: state.selectedCat,
+                タイトル: title,
+                場所: document.getElementById('sched-place').value,
+                予約ステータス: state.selectedBooking,
+                メモ: document.getElementById('sched-memo').value,
+                並び順: document.getElementById('sched-order').value,
+            };
+            const res = await apiCall('saveSchedule', { data });
+            if (!res.success) return showToast('保存エラー: ' + res.error);
+            closeModal('modal-sched');
+            showToast('保存しました ✅');
+            await openTrip(state.currentTripId);
+        }
+
+        async function deleteSched(scheduleId) {
+            if (!confirm('この予定を削除しますか？')) return;
+            await apiCall('deleteSchedule', { scheduleId });
+            showToast('削除しました');
+            await openTrip(state.currentTripId);
+        }
+
+        // 交通手段モーダル
+        function openTrnModal(scheduleId, trn = null) {
+            document.getElementById('trn-id-input').value = trn ? trn.transportId : '';
+            document.getElementById('trn-sched-id-input').value = scheduleId;
+            document.getElementById('modal-trn-title').textContent = trn ? '✏️ 交通手段を編集' : '🚄 交通手段を追加';
+            document.getElementById('trn-origin').value = trn ? trn.出発地 : '';
+            document.getElementById('trn-dest').value = trn ? trn.到着地 : '';
+            document.getElementById('trn-dep').value = trn ? trn.出発時刻 : '';
+            document.getElementById('trn-arr').value = trn ? trn.到着時刻 : '';
+            document.getElementById('trn-line').value = trn ? trn.路線名 : '';
+            document.getElementById('trn-seat').value = trn ? trn.座席情報 : '';
+            document.getElementById('trn-fare').value = trn ? trn.料金 : '';
+            document.getElementById('trn-memo').value = trn ? trn.メモ : '';
+            state.selectedPriority = trn ? trn.優先度 : 'メイン';
+            document.querySelectorAll('.priority-btn').forEach(b => b.classList.toggle('selected', b.dataset.val === state.selectedPriority));
+            openModal('modal-trn');
+        }
+
+        function editTrn(transportId, scheduleId) {
+            const t = state.transports.find(t => t.transportId === transportId);
+            if (t) openTrnModal(scheduleId, t);
+        }
+
+        async function saveTrn() {
+            const origin = document.getElementById('trn-origin').value.trim();
+            const dest = document.getElementById('trn-dest').value.trim();
+            if (!origin || !dest) return showToast('出発地・到着地を入力してください');
+            const data = {
+                transportId: document.getElementById('trn-id-input').value,
+                scheduleId: document.getElementById('trn-sched-id-input').value,
+                tripId: state.currentTripId,
+                出発地: origin, 到着地: dest,
+                出発時刻: document.getElementById('trn-dep').value,
+                到着時刻: document.getElementById('trn-arr').value,
+                路線名: document.getElementById('trn-line').value,
+                座席情報: document.getElementById('trn-seat').value,
+                料金: document.getElementById('trn-fare').value,
+                優先度: state.selectedPriority,
+                メモ: document.getElementById('trn-memo').value,
+            };
+            const res = await apiCall('saveTransport', { data });
+            if (!res.success) return showToast('保存エラー: ' + res.error);
+            closeModal('modal-trn');
+            showToast('保存しました ✅');
+            await openTrip(state.currentTripId);
+        }
+
+        async function deleteTrn(transportId) {
+            if (!confirm('この交通手段を削除しますか？')) return;
+            await apiCall('deleteTransport', { transportId });
+            showToast('削除しました');
+            await openTrip(state.currentTripId);
+        }
+
+        // ============================================================
+        // トースト通知
+        // ============================================================
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        // ============================================================
+        // 初期化
+        // ============================================================
+        document.getElementById('btn-back').onclick = () => {
+            state.currentTripId = null; state.currentDate = null;
+            document.getElementById('app-header').querySelector('h1').textContent = '🗺 Tabi Planner';
+            document.getElementById('btn-new').style.display = '';
+            showScreen('list');
+        };
+
+        document.getElementById('btn-new').onclick = () => openTripModal();
+        document.getElementById('fab').onclick = () => openSchedModal();
+
+        // オーバーレイクリックで閉じる
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+        });
+
+        // デモモード通知
+        if (DEMO_MODE) {
+            const banner = document.createElement('div');
+            banner.style.cssText = 'background:rgba(108,142,255,.15);border-bottom:1px solid var(--border);text-align:center;padding:6px;font-size:12px;color:var(--accent)';
+            banner.textContent = '📱 デモモード — GASをデプロイしてGAS_URLを設定するとデータが保存されます';
+            document.body.insertBefore(banner, document.body.firstChild);
+        }
+
+        loadTrips();
+    </script>
+</body>
+
+</html>
