@@ -1145,8 +1145,17 @@
         // ============================================================
         async function apiCall(action, params = {}) {
             if (DEMO_MODE) return demoApi(action, params);
-            const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, ...params }) });
-            return await res.json();
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action, ...params })
+                });
+                return await res.json();
+            } catch (err) {
+                console.error("API Error:", err);
+                return { success: false, error: "Network/CORS Error: " + err.message };
+            }
         }
 
         function demoApi(action, params) {
@@ -1214,7 +1223,12 @@
         // ============================================================
         async function loadTrips() {
             const res = await apiCall('getTrips');
-            if (!res.success) return showToast('読み込みエラー');
+            if (!res.success) {
+                showToast('読み込みエラー: ' + (res.error || '不明なエラー'));
+                state.trips = [];
+                renderTripList();
+                return;
+            }
             state.trips = res.data;
             renderTripList();
         }
@@ -1239,13 +1253,17 @@
 
         async function openTrip(tripId) {
             state.currentTripId = tripId;
+            const trip = state.trips.find(t => t.tripId === tripId);
+            document.getElementById('app-header').querySelector('h1').textContent = trip ? trip.旅行名 : '計画リスト';
+
             const res = await apiCall('getTripDetail', { tripId });
-            if (!res.success) return showToast('読み込みエラー');
+            if (!res.success) {
+                showToast('読み込みエラー: ' + (res.error || '不明なエラー'));
+                return;
+            }
             state.byDate = res.data.byDate;
             state.schedules = res.data.schedules;
             state.transports = res.data.transports;
-            const trip = state.trips.find(t => t.tripId === tripId);
-            document.getElementById('app-header').querySelector('h1').textContent = trip ? trip.旅行名 : '旅程';
             renderDateTabs();
             showScreen('detail');
         }
